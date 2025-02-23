@@ -144,4 +144,4 @@ demo = gr.ChatInterface(
 )
 
 if __name__ == "__main__":
-    demo.launch(debug=True, share=True, port=80)
+    demo.launch(debug=True, share=True, port=80, server_name="0.0.0.0")
