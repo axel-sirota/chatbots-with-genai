@@ -79,23 +79,21 @@ def retrieve_documents(query, top_k=4):
     return results
 
 # Generate a response using the InferenceClient's streaming chat_completion.
-    # Here, `history` is expected to be a list of dicts with "role" and "content" keys.
 def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
-    response = ""
-    try:
-        for message in client.chat_completion(
-            history,
-            max_tokens=max_new_tokens,
-            stream=True,
-            temperature=temperature,
-            top_p=top_p,
-        ):
-            token = message.choices[0].delta.content or ""
-            response += token
-            yield response
-    except json.decoder.JSONDecodeError:
-        # Likely reached the final termination payload; break out.
-        yield response
+    # Call the inference client with streaming disabled.
+    result = client.chat_completion(
+         history,
+         max_tokens=max_new_tokens,
+         stream=False,           # Disable streaming.
+         temperature=temperature,
+         top_p=top_p,
+    )
+    # Extract the generated text.
+    # Adjust the key path if the API returns a different structure.
+    answer = result["choices"][0]["message"]["content"]
+    
+    # Yield the full response in one go.
+    yield answer
 
 # ---------------- Response Function ----------------
 def respond(message: str,
