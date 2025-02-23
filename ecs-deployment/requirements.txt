@@ -1,0 +1,17 @@
+huggingface_hub==0.22.2
+gradio
+transformers
+requests
+flask
+datasets
+gradio 
+flask 
+requests 
+tqdm 
+faiss-cpu
+torch==2.0.1
+sentence-transformers 
+textblob 
+gensim 
+accelerate 
+ninja

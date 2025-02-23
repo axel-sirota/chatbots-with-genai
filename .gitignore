@@ -169,3 +169,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+ecs-deployment/.terraform
+ecs-deployment/.terraform/*
+ecs-deployment/terraform.tfstate
+ecs-deployment/terraform.tfstate.backup
+ecs-deployment/terraform.lock.hcl
+ecs-deployment/.terraform/**/*
