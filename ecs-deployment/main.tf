@@ -2,6 +2,9 @@ provider "aws" {
   region = "us-east-1"
 }
 
+##########################
+# VPC, Subnets, & IGW
+##########################
 resource "aws_vpc" "chatbot_vpc" {
   cidr_block = "10.0.0.0/16"
 }
@@ -55,9 +58,14 @@ resource "aws_route_table_association" "c" {
   route_table_id = aws_route_table.public_rt.id
 }
 
-resource "aws_security_group" "chatbot_sg" {
-  name        = "chatbot-rag-sg"
-  description = "Allow HTTP traffic"
+##########################
+# Security Groups
+##########################
+
+# Security group for the ALB – allows HTTP from anywhere.
+resource "aws_security_group" "chatbot_alb_sg" {
+  name        = "chatbot-alb-sg"
+  description = "Allow HTTP traffic to the ALB"
   vpc_id      = aws_vpc.chatbot_vpc.id
 
   ingress {
@@ -75,6 +83,74 @@ resource "aws_security_group" "chatbot_sg" {
   }
 }
 
+# Security group for the ECS container – only allow traffic from the ALB.
+resource "aws_security_group" "chatbot_sg" {
+  name        = "chatbot-sg"
+  description = "Allow traffic from the ALB to the chatbot container"
+  vpc_id      = aws_vpc.chatbot_vpc.id
+
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.chatbot_alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+##########################
+# Application Load Balancer (ALB)
+##########################
+resource "aws_lb" "chatbot_alb" {
+  name               = "chatbot-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.chatbot_alb_sg.id]
+  subnets            = [
+    aws_subnet.chatbot_subnet_1.id,
+    aws_subnet.chatbot_subnet_2.id,
+    aws_subnet.chatbot_subnet_3.id
+  ]
+}
+
+resource "aws_lb_target_group" "chatbot_tg" {
+  name        = "chatbot-tg"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.chatbot_vpc.id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    matcher             = "200-399"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener" "chatbot_listener" {
+  load_balancer_arn = aws_lb.chatbot_alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.chatbot_tg.arn
+  }
+}
+
+##########################
+# ECS Cluster & IAM Role
+##########################
 resource "aws_ecs_cluster" "chatbot_cluster" {
   name = "chatbot-cluster"
 }
@@ -99,6 +175,15 @@ resource "aws_iam_role" "ecsTaskExecutionRole" {
   ]
 }
 
+##########################
+# ECS Task Definition
+##########################
+variable "hf_api_token" {
+  description = "Hugging Face API token"
+  type        = string
+  sensitive   = true
+}
+
 resource "aws_ecs_task_definition" "chatbot_task" {
   family                   = "chatbot-task"
   network_mode             = "awsvpc"
@@ -112,8 +197,8 @@ resource "aws_ecs_task_definition" "chatbot_task" {
     image     = "axelsirota/rag_chatbot_inference:latest"
     essential = true
     portMappings = [{
-      containerPort = 80
-      hostPort      = 80
+      containerPort = 8080,
+      hostPort      = 8080
     }]
     logConfiguration = {
       logDriver = "awslogs"
@@ -123,29 +208,54 @@ resource "aws_ecs_task_definition" "chatbot_task" {
         awslogs-stream-prefix = "ecs"
       }
     }
+    environment = [
+      {
+        name  = "HF_API_TOKEN"
+        value = var.hf_api_token
+      }
+    ]
   }])
 }
 
+##########################
+# ECS Service
+##########################
 resource "aws_ecs_service" "chatbot_service" {
   name            = "chatbot-service"
   cluster         = aws_ecs_cluster.chatbot_cluster.id
   task_definition = aws_ecs_task_definition.chatbot_task.arn
   desired_count   = 1
-
-  launch_type = "FARGATE"
+  launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.chatbot_subnet_1.id, aws_subnet.chatbot_subnet_2.id, aws_subnet.chatbot_subnet_3.id]
+    subnets          = [
+      aws_subnet.chatbot_subnet_1.id,
+      aws_subnet.chatbot_subnet_2.id,
+      aws_subnet.chatbot_subnet_3.id
+    ]
     security_groups  = [aws_security_group.chatbot_sg.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.chatbot_tg.arn
+    container_name   = "chatbot"
+    container_port   = 8080
+  }
 }
 
+##########################
+# CloudWatch Log Group
+##########################
 resource "aws_cloudwatch_log_group" "ecs_log_group" {
   name              = "/ecs/chatbot"
   retention_in_days = 7
 }
 
-output "service_url" {
-  value = aws_ecs_service.chatbot_service.network_configuration
+##########################
+# Terraform Output
+##########################
+output "alb_dns" {
+  description = "The ALB DNS name. Use this domain in your browser to access the chatbot UI."
+  value       = aws_lb.chatbot_alb.dns_name
 }

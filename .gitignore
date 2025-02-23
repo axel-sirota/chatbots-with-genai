@@ -176,3 +176,8 @@ ecs-deployment/terraform.tfstate
 ecs-deployment/terraform.tfstate.backup
 ecs-deployment/terraform.lock.hcl
 ecs-deployment/.terraform/**/*
+ecs-deployment/terraform.tfvars
+ecs-deployment/terraform.tfvars.json
+ecs-deployment/terraform.tfvars.json.example
+ecs-deployment/terraform.tfvars.example
+ecs-deployment/terraform.tfvars.example.json
