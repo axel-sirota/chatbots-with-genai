@@ -79,18 +79,22 @@ def retrieve_documents(query, top_k=4):
     return results
 
 # Generate a response using the InferenceClient's streaming chat_completion.
-def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
     # Here, `history` is expected to be a list of dicts with "role" and "content" keys.
+def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
     response = ""
-    for message in client.chat_completion(
-        history,
-        max_tokens=max_new_tokens,
-        stream=True,
-        temperature=temperature,
-        top_p=top_p,
-    ):
-        token = message.choices[0].delta.content if message.choices[0].delta.content is not None else ""
-        response += token
+    try:
+        for message in client.chat_completion(
+            history,
+            max_tokens=max_new_tokens,
+            stream=True,
+            temperature=temperature,
+            top_p=top_p,
+        ):
+            token = message.choices[0].delta.content or ""
+            response += token
+            yield response
+    except json.decoder.JSONDecodeError:
+        # Likely reached the final termination payload; break out.
         yield response
 
 # ---------------- Response Function ----------------
@@ -144,4 +148,4 @@ demo = gr.ChatInterface(
 )
 
 if __name__ == "__main__":
-    demo.launch(debug=True, share=True, port=80, server_name="0.0.0.0")
+    demo.launch(debug=True, share=True, server_name="0.0.0.0", server_port=8080)
