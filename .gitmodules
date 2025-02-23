@@ -1,0 +1,3 @@
+[submodule "medical-rag-chatbot"]
+	path = medical-rag-chatbot
+	url = git@hf.co:spaces/axelsirota/medical-rag-chatbot
