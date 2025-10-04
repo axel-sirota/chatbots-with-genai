@@ -59,7 +59,7 @@ retrieval_model.cpu().eval()
 
 # Initialize the InferenceClient for Mistral.
 # Ensure your HF_API_TOKEN is set in your environment.
-client = InferenceClient(model="mistralai/Mistral-7B-Instruct-v0.3", token=os.environ.get("HF_API_TOKEN"))
+client = InferenceClient(model="HuggingFaceTB/SmolLM3-3B", token=os.environ.get("HF_API_TOKEN"))
 
 #-----------------Functions----------------------
 
