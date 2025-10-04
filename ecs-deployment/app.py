@@ -59,7 +59,7 @@ retrieval_model.cpu().eval()
 
 # Initialize the InferenceClient for Mistral.
 # Ensure your HF_API_TOKEN is set in your environment.
-client = InferenceClient(model="HuggingFaceTB/SmolLM3-3B", token=os.environ.get("HF_API_TOKEN"))
+client = InferenceClient(model="HuggingFaceH4/zephyr-7b-beta", token=os.environ.get("HF_API_TOKEN"))
 
 #-----------------Functions----------------------
 
@@ -81,19 +81,25 @@ def retrieve_documents(query, top_k=4):
 # Generate a response using the InferenceClient's streaming chat_completion.
 def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
     # Call the inference client with streaming disabled.
-    result = client.chat_completion(
-         history,
-         max_tokens=max_new_tokens,
-         stream=False,           # Disable streaming.
-         temperature=temperature,
-         top_p=top_p,
+    prompt = chat_tokenizer.apply_chat_template(
+        history,
+        tokenize=False,
+        add_generation_prompt=True
     )
-    # Extract the generated text.
-    # Adjust the key path if the API returns a different structure.
-    answer = result["choices"][0]["message"]["content"]
+
+    # Call generic text-generation endpoint (works broadly across models)
+    result = client.text_generation(
+        prompt,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        stream=False,
+        return_full_text=False,  # so you only get the new text
+        details=False            # so the result is a plain string
+    )
     
     # Yield the full response in one go.
-    yield answer
+    yield result
 
 # ---------------- Response Function ----------------
 def respond(message: str,
