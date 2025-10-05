@@ -15,6 +15,7 @@ CHUNKED_DOCUMENTS_URL = "https://www.dropbox.com/scl/fi/07wd0zwvz2xcq80hy5f91/ch
 INDEX_PATH = "./faiss_index.idx"
 FAISS_INDEX_URL = "https://www.dropbox.com/scl/fi/05ez2886nz5fkkcqsv6hs/faiss_index.idx?rlkey=yil6ollju5smk04upluenqot4&st=yu0oji49&dl=1"
 dimension = 384  # Embedding size from MiniLM model
+CHAT_MODEL_ID = "HuggingFaceH4/zephyr-7b-beta"
 
 #------------------Load chunks-------------------
 if CHUNKED_DOCUMENTS_PATH.exists():
@@ -59,8 +60,11 @@ retrieval_model.cpu().eval()
 
 # Initialize the InferenceClient for Mistral.
 # Ensure your HF_API_TOKEN is set in your environment.
-client = InferenceClient(model="HuggingFaceH4/zephyr-7b-beta", token=os.environ.get("HF_API_TOKEN"))
+HF_TOKEN = os.environ.get("HF_API_TOKEN")
+client = InferenceClient(token=HF_TOKEN)
 
+# tokenizer for chat template
+chat_tokenizer = AutoTokenizer.from_pretrained(CHAT_MODEL_ID)
 #-----------------Functions----------------------
 
 # Generate embeddings for a new query (using the local retrieval model).
@@ -90,6 +94,7 @@ def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
     # Call generic text-generation endpoint (works broadly across models)
     result = client.text_generation(
         prompt,
+        model=CHAT_MODEL_ID,
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         top_p=top_p,
