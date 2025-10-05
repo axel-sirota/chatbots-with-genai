@@ -9,7 +9,7 @@ flask
 requests 
 tqdm 
 faiss-cpu
-torch==2.0.1
+torch
 sentence-transformers 
 textblob 
 gensim 
