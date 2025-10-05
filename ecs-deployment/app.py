@@ -61,7 +61,7 @@ retrieval_model.cpu().eval()
 # Initialize the InferenceClient for Mistral.
 # Ensure your HF_API_TOKEN is set in your environment.
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
-client = InferenceClient(token=HF_TOKEN)
+client = InferenceClient(token=HF_TOKEN, model=CHAT_MODEL_ID)
 
 # tokenizer for chat template
 chat_tokenizer = AutoTokenizer.from_pretrained(CHAT_MODEL_ID)
@@ -142,9 +142,9 @@ def respond(message: str,
 demo = gr.ChatInterface(
     fn=respond,
     type="messages",  # Conversation history is a list of message dictionaries.
-    title="Mistral Chatbot via Inference Client",
+    title="RAG Chatbot via Inference Client",
     description=(
-        "A chatbot powered by Mistral-7B-Instruct (via the Hugging Face Inference API). "
+        "A chatbot powered via the Hugging Face Inference API. "
         "It uses local document retrieval to provide context for the conversation. "
         "Adjust parameters below to test and troubleshoot responses."
     ),

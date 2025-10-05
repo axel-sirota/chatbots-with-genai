@@ -188,13 +188,13 @@ resource "aws_ecs_task_definition" "chatbot_task" {
   family                   = "chatbot-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "2048"
-  memory                   = "8192"
+  cpu                      = "4096"
+  memory                   = "16386"
   execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
 
   container_definitions = jsonencode([{
     name      = "chatbot"
-    image     = "axelsirota/rag_chatbot_inference:latest"
+    image     = "axelsirota/rag_chatbot_inference:prod"
     essential = true
     portMappings = [{
       containerPort = 8080,
