@@ -83,28 +83,23 @@ def retrieve_documents(query, top_k=4):
     return results
 
 # Generate a response using the InferenceClient's streaming chat_completion.
-def generate_response(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
+def generate_response_stream(history, max_new_tokens=100, temperature=0.7, top_p=0.95):
     # Call the inference client with streaming disabled.
-    prompt = chat_tokenizer.apply_chat_template(
-        history,
-        tokenize=False,
-        add_generation_prompt=True
-    )
-
-    # Call generic text-generation endpoint (works broadly across models)
-    result = client.text_generation(
-        prompt,
+    resp_stream = client.chat.completions.create(
         model=CHAT_MODEL_ID,
-        max_new_tokens=max_new_tokens,
+        messages=history,
+        max_tokens=max_new_tokens,
         temperature=temperature,
         top_p=top_p,
-        stream=False,
-        return_full_text=False,  # so you only get the new text
-        details=False            # so the result is a plain string
+        stream=True
     )
-    
-    # Yield the full response in one go.
-    yield result
+    # resp_stream is iterable; each chunk has delta content
+    for chunk in resp_stream:
+        # chunk.choices is a list; delta may have new content
+        delta = chunk.choices[0].delta
+        # delta may have 'content'
+        if hasattr(delta, "content") and delta.content is not None:
+            yield delta.content
 
 # ---------------- Response Function ----------------
 def respond(message: str,
@@ -129,14 +124,14 @@ def respond(message: str,
     # Append the new user message to the conversation history.
     history.append({"role": "user", "content": input_text})
     
-    # Stream the assistant's response.
-    full_response = ""
-    for partial_response in generate_response(history, max_new_tokens=max_tokens, temperature=temperature, top_p=top_p):
-        full_response = partial_response
-        yield full_response
-    
-    # After streaming is complete, update the conversation history.
-    history.append({"role": "assistant", "content": full_response})
+    # Now stream
+    accumulated = ""
+    for delta in generate_response_stream(history, max_new_tokens=max_tokens, temperature=temperature, top_p=top_p):
+        accumulated += delta
+        yield accumulated
+
+    # Append final assistant message
+    history.append({"role": "assistant", "content": accumulated})
 
 # ---------------- Gradio Chat Interface ----------------
 demo = gr.ChatInterface(
