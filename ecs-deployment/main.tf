@@ -194,7 +194,7 @@ resource "aws_ecs_task_definition" "chatbot_task" {
 
   container_definitions = jsonencode([{
     name      = "chatbot"
-    image     = "axelsirota/rag_chatbot_inference:prod"
+    image     = "axelsirota/rag_chatbot_inference:prod-2"
     essential = true
     portMappings = [{
       containerPort = 8080,
